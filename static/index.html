@@ -2,59 +2,72 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>Debug - Extrator</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Extrator de Logradouros</title>
 <style>
-  body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
-  input, button { display: block; width: 100%; padding: 8px; margin: 8px 0; }
-  #log { background: #eee; padding: 10px; font-family: monospace; white-space: pre-wrap; margin-top: 20px; min-height: 100px; }
+  :root { --primary:#2c6ecb; --ok:#1b8a4b; --err:#c0392b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:#fafafa; color:#1a1a1a; }
+  .container { max-width: 720px; margin: 40px auto; padding: 24px; }
+  form { background:#fff; padding: 24px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  label { display:block; font-weight: 600; margin: 16px 0 6px 0; font-size: 14px; }
+  label:first-of-type { margin-top: 0; }
+  input[type=file], input[type=text] { width:100%; padding:10px; font-size:14px; border:1px solid #ccc; border-radius:6px; }
+  .row { display:grid; grid-template-columns: 3fr 1fr; gap:12px; }
+  .hint { font-size:12px; color:#888; margin-top:4px; }
+  button { margin-top:24px; width:100%; padding:12px; font-size:15px; font-weight:600; color:#fff; background: var(--primary); border:0; border-radius:6px; cursor:pointer; }
+  button:disabled { opacity:.55; cursor: not-allowed; }
+  #status { margin-top: 20px; padding: 12px; border-radius:6px; font-size:14px; display:none; white-space: pre-wrap; word-break: break-word; }
+  #status.info { display:block; background:#e8f0fb; color:var(--primary); }
+  #status.success { display:block; background:#e2f5ea; color:var(--ok); }
+  #status.error { display:block; background:#fbe6e3; color:var(--err); }
 </style>
 </head>
 <body>
-  <h2>Debug do Extrator</h2>
-  <input type="file" id="pdf">
-  <input type="file" id="shp">
-  <input type="text" id="mun" value="Cajazeiras">
-  <input type="text" id="uf" value="PB">
-  <button onclick="enviar()">Processar (Debug)</button>
-  <pre id="log">Aguardando...</pre>
+<div class="container">
+  <h1>Extrator de Logradouros</h1>
+  <p style="color:#666;font-size:14px">PDF (mapa de arruamento) + shapefile oficial + OSM (opcional) → GeoPackage georreferenciado</p>
+
+  <form id="form">
+    <label for="pdf">Mapa em PDF</label>
+    <input type="file" id="pdf" accept=".pdf,application/pdf" required>
+
+    <label for="shp">Shapefile oficial do município (.zip/.gpkg)</label>
+    <input type="file" id="shp" accept=".zip,.shp,.gpkg,.geojson" required>
+
+    <label for="osm">Dados do OpenStreetMap (opcional - .gpkg)</label>
+    <input type="file" id="osm" accept=".gpkg,.geojson,.shp,.zip">
+    <div class="hint">Envie o arquivo .gpkg gerado no Colab para cidades grandes (melhora a precisão).</div>
+
+    <div class="row" style="margin-top:16px">
+      <div>
+        <label for="municipio" style="margin-top:0">Município</label>
+        <input type="text" id="municipio" placeholder="Ex.: Campina Grande" required>
+      </div>
+      <div>
+        <label for="uf" style="margin-top:0">UF</label>
+        <input type="text" id="uf" maxlength="2" placeholder="PB" required>
+      </div>
+    </div>
+
+    <button type="submit" id="btn">Processar</button>
+  </form>
+  <div id="status"></div>
+</div>
 
 <script>
-async function enviar() {
-  const logEl = document.getElementById("log");
-  logEl.textContent = "Enviando arquivos para o servidor...\n";
+  const form = document.getElementById("form");
+  const btn = document.getElementById("btn");
+  const statusEl = document.getElementById("status");
 
-  const fd = new FormData();
-  fd.append("pdf", document.getElementById("pdf").files[0]);
-  fd.append("shapefile", document.getElementById("shp").files[0]);
-  fd.append("municipio", document.getElementById("mun").value);
-  fd.append("uf", document.getElementById("uf").value);
+  function setStatus(kind, msg) { statusEl.className = kind; statusEl.textContent = msg; }
 
-  try {
-    const inicio = Date.now();
-    const resp = await fetch("/processar", { method: "POST", body: fd });
-    logEl.textContent += "Resposta recebida em " + ((Date.now()-inicio)/1000).toFixed(1) + "s\n";
-    logEl.textContent += "Status HTTP: " + resp.status + "\n";
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    const t0 = Date.now();
+    setStatus("info", "Enviando arquivos... 0s");
+    const timer = setInterval(() => setStatus("info", "Processando... " + Math.floor((Date.now()-t0)/1000) + "s"), 500);
 
-    if (!resp.ok) {
-      const textoErro = await resp.text();
-      logEl.textContent += "\n=== ERRO DO SERVIDOR ===\n" + textoErro;
-      return;
-    }
-
-    const blob = await resp.blob();
-    logEl.textContent += "Download OK: " + blob.size + " bytes\nGerando link...\n";
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "resultado.zip";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    logEl.textContent += "Feito!";
-  } catch (err) {
-    logEl.textContent += "\n=== ERRO NO NAVEGADOR ===\n" + err.name + ": " + err.message;
-  }
-}
-</script>
-</body>
-</html>
+    const fd = new FormData();
+    fd.append("pdf", document.getElementById("pdf").files[0
