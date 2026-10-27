@@ -188,7 +188,7 @@ def filtrar_normalizar(df_raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def baixar_osm(municipio: str, uf: str, crs: str, log: list[str]) -> gpd.GeoDataFrame | None:
-    return None  # <--- ADICIONE ESTA LINHA AQUI
+    return None
     try:
         import osmnx as ox
     except ImportError:
