@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Debug - Extrator</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+  input, button { display: block; width: 100%; padding: 8px; margin: 8px 0; }
+  #log { background: #eee; padding: 10px; font-family: monospace; white-space: pre-wrap; margin-top: 20px; min-height: 100px; }
+</style>
+</head>
+<body>
+  <h2>Debug do Extrator</h2>
+  <input type="file" id="pdf">
+  <input type="file" id="shp">
+  <input type="text" id="mun" value="Cajazeiras">
+  <input type="text" id="uf" value="PB">
+  <button onclick="enviar()">Processar (Debug)</button>
+  <pre id="log">Aguardando...</pre>
+
+<script>
+async function enviar() {
+  const logEl = document.getElementById("log");
+  logEl.textContent = "Enviando arquivos para o servidor...\n";
+
+  const fd = new FormData();
+  fd.append("pdf", document.getElementById("pdf").files[0]);
+  fd.append("shapefile", document.getElementById("shp").files[0]);
+  fd.append("municipio", document.getElementById("mun").value);
+  fd.append("uf", document.getElementById("uf").value);
+
+  try {
+    const inicio = Date.now();
+    const resp = await fetch("/processar", { method: "POST", body: fd });
+    logEl.textContent += "Resposta recebida em " + ((Date.now()-inicio)/1000).toFixed(1) + "s\n";
+    logEl.textContent += "Status HTTP: " + resp.status + "\n";
+
+    if (!resp.ok) {
+      const textoErro = await resp.text();
+      logEl.textContent += "\n=== ERRO DO SERVIDOR ===\n" + textoErro;
+      return;
+    }
+
+    const blob = await resp.blob();
+    logEl.textContent += "Download OK: " + blob.size + " bytes\nGerando link...\n";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resultado.zip";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    logEl.textContent += "Feito!";
+  } catch (err) {
+    logEl.textContent += "\n=== ERRO NO NAVEGADOR ===\n" + err.name + ": " + err.message;
+  }
+}
+</script>
+</body>
+</html>
