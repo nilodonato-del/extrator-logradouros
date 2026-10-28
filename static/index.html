@@ -26,18 +26,18 @@
 <body>
 <div class="container">
   <h1>Extrator de Logradouros</h1>
-  <p style="color:#666;font-size:14px">PDF (mapa de arruamento) + shapefile oficial + OSM (opcional) → GeoPackage georreferenciado</p>
+  <p style="color:#666;font-size:14px">PDF + shapefile oficial + OSM (opcional)</p>
 
   <form id="form">
     <label for="pdf">Mapa em PDF</label>
     <input type="file" id="pdf" accept=".pdf,application/pdf" required>
 
-    <label for="shp">Shapefile oficial do município (.zip/.gpkg)</label>
+    <label for="shp">Shapefile oficial (.zip ou .gpkg)</label>
     <input type="file" id="shp" accept=".zip,.shp,.gpkg,.geojson" required>
 
     <label for="osm">Dados do OpenStreetMap (opcional - .gpkg)</label>
     <input type="file" id="osm" accept=".gpkg,.geojson,.shp,.zip">
-    <div class="hint">Envie o arquivo .gpkg gerado no Colab para cidades grandes (melhora a precisão).</div>
+    <div class="hint">Para cidades grandes, gere o .gpkg no Colab e envie aqui para melhorar a precisão.</div>
 
     <div class="row" style="margin-top:16px">
       <div>
@@ -70,4 +70,5 @@
     const timer = setInterval(() => setStatus("info", "Processando... " + Math.floor((Date.now()-t0)/1000) + "s"), 500);
 
     const fd = new FormData();
-    fd.append("pdf", document.getElementById("pdf").files[0
+    fd.append("pdf", document.getElementById("pdf").files[0]);
+    fd.append("shapefile",
