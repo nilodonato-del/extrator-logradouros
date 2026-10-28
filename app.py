@@ -20,12 +20,6 @@ def _limpar_antigos(max_horas: int = 2) -> None:
             if d.is_dir() and d.stat().st_mtime < limite: shutil.rmtree(d, ignore_errors=True)
         except Exception: pass
 
-# NOVO: Função para salvar arquivos de forma segura, sem estourar a RAM
-def _salvar_upload_seguro(upload: UploadFile, destino: Path):
-    with open(destino, "wb") as f:
-        while chunk := upload.file.read(1024 * 1024): # Lê em blocos de 1MB
-            f.write(chunk)
-
 @app.get("/health")
 def health(): return {"status": "ok"}
 
@@ -58,14 +52,13 @@ def processar(
     out_dir = job_dir / "output"
     out_dir.mkdir(exist_ok=True)
 
-    # Usa a nova função de leitura segura
-    _salvar_upload_seguro(pdf, pdf_path)
-    _salvar_upload_seguro(shapefile, shp_path)
+    with open(pdf_path, "wb") as f: shutil.copyfileobj(pdf.file, f)
+    with open(shp_path, "wb") as f: shutil.copyfileobj(shapefile.file, f)
 
     osm_path = None
     if osm and osm.filename:
         osm_path = str(job_dir / osm.filename)
-        _salvar_upload_seguro(osm, Path(osm_path))
+        with open(osm_path, "wb") as f: shutil.copyfileobj(osm.file, f)
 
     try:
         from extrair_logradouros import processar_pipeline
