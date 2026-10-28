@@ -40,12 +40,10 @@ def _detectar_coluna_nome(gdf: gpd.GeoDataFrame) -> str | None:
     candidatos = ["nome", "name", "logradouro", "rua", "nm_rua", "ds_nome"]
     lower_map = {c.lower(): c for c in gdf.columns}
     for cand in candidatos:
-        if cand in lower_map and gdf[lower_map[cand]].notna().mean() >= 0.5:
-            return lower_map[cand]
+        if cand in lower_map and gdf[lower_map[cand]].notna().mean() >= 0.5: return lower_map[cand]
     for c in gdf.columns:
         if c != "geometry" and gdf[c].dtype == object and gdf[c].notna().mean() >= 0.5:
-            if len(gdf[c].dropna()) and gdf[c].dropna().astype(str).str.len().mean() > 2:
-                return c
+            if len(gdf[c].dropna()) and gdf[c].dropna().astype(str).str.len().mean() > 2: return c
     return None
 
 def ler_shapefile(path: str, crs: str, log: list[str]) -> gpd.GeoDataFrame | None:
@@ -114,18 +112,20 @@ def filtrar_normalizar(df_raw: pd.DataFrame) -> pd.DataFrame:
     df["_len"] = df["texto_limpo"].str.len()
     return df.sort_values("_len", ascending=False).drop_duplicates("nome_norm").drop(columns="_len").reset_index(drop=True)
 
+def baixar_osm(*args, **kwargs) -> gpd.GeoDataFrame | None:
+    # OTIMIZAÇÃO: Download automático desativado para evitar OOM no Render.
+    # O OSM agora deve ser enviado pelo usuário via upload.
+    return None
+
 def ler_osm_arquivo(osm_path: str, crs: str, log: list[str]) -> gpd.GeoDataFrame | None:
-    if not osm_path or not Path(osm_path).exists():
-        return None
+    if not osm_path or not Path(osm_path).exists(): return None
     log.append("Carregando OSM a partir do arquivo enviado...")
     gdf = gpd.read_file(osm_path)
     if gdf.crs is None: gdf = gdf.set_crs("EPSG:4326")
     gdf = gdf.to_crs(crs)
     
     col_nome = _detectar_coluna_nome(gdf)
-    if not col_nome:
-        log.append("AVISO: arquivo OSM sem coluna de nome.")
-        return None
+    if not col_nome: return None
     gdf["nome_orig"] = gdf[col_nome].astype(str)
     gdf["nome_norm"] = gdf["nome_orig"].apply(_normalizar)
     gdf["nome_norm_np"] = gdf["nome_norm"].apply(_strip_prefixo)
